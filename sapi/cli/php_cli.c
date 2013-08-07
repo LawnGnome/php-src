@@ -95,9 +95,7 @@
 # include "win32/select.h"
 #endif
 
-PHPAPI extern char *php_ini_opened_path;
 PHPAPI extern char *php_ini_scanned_path;
-PHPAPI extern char *php_ini_scanned_files;
 
 #ifndef O_BINARY
 #define O_BINARY 0
@@ -1163,10 +1161,22 @@ static int do_cli(int argc, char **argv TSRMLS_DC) /* {{{ */
 				}
 			case PHP_MODE_SHOW_INI_CONFIG:
 				{
+					char *loaded_file = php_info_loaded_configuration_file();
+					char *scanned_files = php_info_scanned_configuration_files();
+
 					zend_printf("Configuration File (php.ini) Path: %s\n", PHP_CONFIG_FILE_PATH);
-					zend_printf("Loaded Configuration File:         %s\n", php_ini_opened_path ? php_ini_opened_path : "(none)");
-					zend_printf("Scan for additional .ini files in: %s\n", php_ini_scanned_path  ? php_ini_scanned_path : "(none)");
-					zend_printf("Additional .ini files parsed:      %s\n", php_ini_scanned_files ? php_ini_scanned_files : "(none)");
+					zend_printf("Loaded Configuration File:		 %s\n", loaded_file		  ? loaded_file		  : "(none)");
+					zend_printf("Scan for additional .ini files in: %s\n", php_ini_scanned_path ? php_ini_scanned_path : "(none)");
+					zend_printf("Additional .ini files parsed:	  %s\n", scanned_files		? scanned_files		: "(none)");
+
+					if (loaded_file) {
+						efree(loaded_file);
+					}
+
+					if (scanned_files) {
+						efree(scanned_files);
+					}
+
 					break;
 				}
 		}

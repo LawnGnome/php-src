@@ -25,6 +25,7 @@
 #include "php_globals.h"
 #include "ext/standard/head.h"
 #include "ext/standard/html.h"
+#include "ext/standard/php_smart_str.h"
 #include "info.h"
 #include "credits.h"
 #include "css.h"
@@ -57,9 +58,9 @@ typedef BOOL (WINAPI *PGPI)(DWORD, DWORD, DWORD, DWORD, PDWORD);
 							php_info_print_table_end(); \
 						} \
 
-PHPAPI extern char *php_ini_opened_path;
+PHPAPI extern php_ini_file php_ini;
 PHPAPI extern char *php_ini_scanned_path;
-PHPAPI extern char *php_ini_scanned_files;
+PHPAPI extern zend_llist php_ini_scanned_files;
 
 static int php_info_print_html_esc(const char *str, int len) /* {{{ */
 {
@@ -672,6 +673,8 @@ PHPAPI void php_print_info(int flag TSRMLS_DC)
 	if (flag & PHP_INFO_GENERAL) {
 		char *zend_version = get_zend_version();
 		char temp_api[10];
+		char *loaded_file = php_info_loaded_configuration_file();
+		char *scanned_files = php_info_scanned_configuration_files();
 
 		php_uname = php_get_uname('a');
 
@@ -724,9 +727,9 @@ PHPAPI void php_print_info(int flag TSRMLS_DC)
 #endif
 
 		php_info_print_table_row(2, "Configuration File (php.ini) Path", PHP_CONFIG_FILE_PATH);
-		php_info_print_table_row(2, "Loaded Configuration File", php_ini_opened_path ? php_ini_opened_path : "(none)");
+		php_info_print_table_row(2, "Loaded Configuration File", loaded_file ? loaded_file : "(none)");
 		php_info_print_table_row(2, "Scan this dir for additional .ini files", php_ini_scanned_path ? php_ini_scanned_path : "(none)");
-		php_info_print_table_row(2, "Additional .ini files parsed", php_ini_scanned_files ? php_ini_scanned_files : "(none)");
+		php_info_print_table_row(2, "Additional .ini files parsed", scanned_files ? scanned_files : "(none)");
 
 		snprintf(temp_api, sizeof(temp_api), "%d", PHP_API_VERSION);
 		php_info_print_table_row(2, "PHP API", temp_api);
@@ -805,6 +808,12 @@ PHPAPI void php_print_info(int flag TSRMLS_DC)
 		}
 		php_info_print_box_end();
 		efree(php_uname);
+		if (loaded_file) {
+			efree(loaded_file);
+		}
+		if (scanned_files) {
+			efree(scanned_files);
+		}
 	}
 
 	zend_ini_sort_entries(TSRMLS_C);
@@ -1111,6 +1120,58 @@ PHPAPI void php_info_print_table_row_ex(int num_cols, const char *value_class,
 }
 /* }}} */
 
+/* {{{ php_info_loaded_configuration_file */
+
+/* Returns the loaded primary configuration file, with (failed) appended if
+ * it failed to load. You will have to efree() the result of this function.
+ * Returns NULL if no file was loaded. */
+PHPAPI char *php_info_loaded_configuration_file()
+{
+	smart_str loaded_file = {0, 0, 0};
+
+	if (php_ini.filename) {
+		smart_str_appends(&loaded_file, php_ini.filename);
+
+		if (!php_ini.success) {
+			smart_str_appends(&loaded_file, " (failed)");
+		}
+	}
+
+	return loaded_file.c;
+}
+/* }}} */
+
+/* {{{ php_info_scanned_configuration_files */
+
+/* Returns the scanned configuration files as a comma separated string, with
+ * (failed) append to any files that failed to load. You will have to efree()
+ * the result of this function. Returns NULL if no files were scanned. */
+PHPAPI char *php_info_scanned_configuration_files()
+{
+	smart_str scanned_files = {0, 0, 0};
+	zend_llist_element *element;
+
+	for (element = php_ini_scanned_files.head; element; element = element->next) {
+		if (element->data) {
+			php_ini_file *file = (php_ini_file *) element->data;
+
+			if (file->filename) {
+				if (scanned_files.len) {
+					smart_str_appends(&scanned_files, ", ");
+				}
+				smart_str_appends(&scanned_files, file->filename);
+
+				if (!file->success) {
+					smart_str_appends(&scanned_files, " (failed)");
+				}
+			}
+		}
+	}
+
+	return scanned_files.c;
+}
+/* }}} */
+
 /* {{{ register_phpinfo_constants
  */
 void register_phpinfo_constants(INIT_FUNC_ARGS)
@@ -1229,12 +1290,14 @@ PHP_FUNCTION(php_uname)
    Return comma-separated string of .ini files parsed from the additional ini dir */
 PHP_FUNCTION(php_ini_scanned_files)
 {
+	char *scanned_files;
+
 	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 
-	if (strlen(PHP_CONFIG_FILE_SCAN_DIR) && php_ini_scanned_files) {
-		RETURN_STRING(php_ini_scanned_files, 1);
+	if ((scanned_files = php_info_scanned_configuration_files()) != NULL) {
+		RETURN_STRING(scanned_files, 0);
 	} else {
 		RETURN_FALSE;
 	}
@@ -1245,12 +1308,14 @@ PHP_FUNCTION(php_ini_scanned_files)
    Return the actual loaded ini filename */
 PHP_FUNCTION(php_ini_loaded_file)
 {
+	char *loaded_file;
+
 	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 
-	if (php_ini_opened_path) {
-		RETURN_STRING(php_ini_opened_path, 1);
+	if ((loaded_file = php_info_loaded_configuration_file()) != NULL) {
+		RETURN_STRING(loaded_file, 0);
 	} else {
 		RETURN_FALSE;
 	}

@@ -24,6 +24,11 @@
 #include "zend_ini.h"
 
 BEGIN_EXTERN_C()
+typedef struct _php_ini_file {
+	char *filename;
+	zend_bool success;
+} php_ini_file;
+
 PHPAPI void config_zval_dtor(zval *zvalue);
 int php_init_config(TSRMLS_D);
 int php_shutdown_config(void);
