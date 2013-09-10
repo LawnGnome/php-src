@@ -11,16 +11,8 @@ if (version_compare(curl_version()['version'], '7.19.4', '>=')) exit("skip curl 
 <?php
 $ch = curl_init();
 var_dump(curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true));
-var_dump(curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_FILE));
-var_dump(curl_setopt($ch, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_FILE));
 curl_close($ch);
 ?>
 --EXPECTF--
 Warning: curl_setopt(): CURLOPT_FOLLOWLOCATION cannot be activated when an open_basedir is set in %s on line %d
-bool(false)
-
-Warning: curl_setopt(): CURLPROTO_FILE cannot be activated when an open_basedir is set in %s on line %d
-bool(false)
-
-Warning: curl_setopt(): CURLPROTO_FILE cannot be activated when an open_basedir is set in %s on line %d
 bool(false)
