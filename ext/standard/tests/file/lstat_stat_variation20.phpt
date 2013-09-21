@@ -65,7 +65,7 @@ unlink("$file_path/lstat_stat_variation20.tmp");
 *** Testing lstat() with linkname stored inside an object/array ***
 
 -- Testing lstat() on link name stored inside an object --
-array(26) {
+array(32) {
   [0]=>
   int(%d)
   [1]=>
@@ -92,6 +92,12 @@ array(26) {
   int(%d)
   [12]=>
   int(%d)
+  [13]=>
+  int(%d)
+  [14]=>
+  int(%d)
+  [15]=>
+  int(%d)
   ["dev"]=>
   int(%d)
   ["ino"]=>
@@ -117,11 +123,17 @@ array(26) {
   ["blksize"]=>
   int(%d)
   ["blocks"]=>
+  int(%d)
+  ["atimensec"]=>
+  int(%d)
+  ["mtimensec"]=>
+  int(%d)
+  ["ctimensec"]=>
   int(%d)
 }
 
 -- Testing stat() on link name stored inside an array --
-array(26) {
+array(32) {
   [0]=>
   int(%d)
   [1]=>
@@ -148,6 +160,12 @@ array(26) {
   int(%d)
   [12]=>
   int(%d)
+  [13]=>
+  int(%d)
+  [14]=>
+  int(%d)
+  [15]=>
+  int(%d)
   ["dev"]=>
   int(%d)
   ["ino"]=>
@@ -173,9 +191,15 @@ array(26) {
   ["blksize"]=>
   int(%d)
   ["blocks"]=>
+  int(%d)
+  ["atimensec"]=>
+  int(%d)
+  ["mtimensec"]=>
+  int(%d)
+  ["ctimensec"]=>
   int(%d)
 }
-array(26) {
+array(32) {
   [0]=>
   int(%d)
   [1]=>
@@ -202,6 +226,12 @@ array(26) {
   int(%d)
   [12]=>
   int(%d)
+  [13]=>
+  int(%d)
+  [14]=>
+  int(%d)
+  [15]=>
+  int(%d)
   ["dev"]=>
   int(%d)
   ["ino"]=>
@@ -227,9 +257,15 @@ array(26) {
   ["blksize"]=>
   int(%d)
   ["blocks"]=>
+  int(%d)
+  ["atimensec"]=>
+  int(%d)
+  ["mtimensec"]=>
+  int(%d)
+  ["ctimensec"]=>
   int(%d)
 }
-array(26) {
+array(32) {
   [0]=>
   int(%d)
   [1]=>
@@ -256,6 +292,12 @@ array(26) {
   int(%d)
   [12]=>
   int(%d)
+  [13]=>
+  int(%d)
+  [14]=>
+  int(%d)
+  [15]=>
+  int(%d)
   ["dev"]=>
   int(%d)
   ["ino"]=>
@@ -281,6 +323,12 @@ array(26) {
   ["blksize"]=>
   int(%d)
   ["blocks"]=>
+  int(%d)
+  ["atimensec"]=>
+  int(%d)
+  ["mtimensec"]=>
+  int(%d)
+  ["ctimensec"]=>
   int(%d)
 }
 

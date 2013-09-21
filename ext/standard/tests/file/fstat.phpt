@@ -14,7 +14,7 @@ var_dump(fstat($fp));
 echo "Done\n";
 ?>
 --EXPECTF--	
-array(26) {
+array(32) {
   [0]=>
   int(%i)
   [1]=>
@@ -41,6 +41,12 @@ array(26) {
   int(%i)
   [12]=>
   int(%i)
+  [13]=>
+  int(%i)
+  [14]=>
+  int(%i)
+  [15]=>
+  int(%i)
   ["dev"]=>
   int(%i)
   ["ino"]=>
@@ -66,6 +72,12 @@ array(26) {
   ["blksize"]=>
   int(%i)
   ["blocks"]=>
+  int(%i)
+  ["atimensec"]=>
+  int(%i)
+  ["mtimensec"]=>
+  int(%i)
+  ["ctimensec"]=>
   int(%i)
 }
 

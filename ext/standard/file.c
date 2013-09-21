@@ -1517,12 +1517,14 @@ PHP_NAMED_FUNCTION(php_if_fstat)
 {
 	zval *fp;
 	zval *stat_dev, *stat_ino, *stat_mode, *stat_nlink, *stat_uid, *stat_gid, *stat_rdev,
-		 *stat_size, *stat_atime, *stat_mtime, *stat_ctime, *stat_blksize, *stat_blocks;
+		 *stat_size, *stat_atime, *stat_mtime, *stat_ctime, *stat_blksize, *stat_blocks,
+		 *stat_atimensec, *stat_mtimensec, *stat_ctimensec;
 	php_stream *stream;
 	php_stream_statbuf stat_ssb;
-	char *stat_sb_names[13] = {
+	char *stat_sb_names[16] = {
 		"dev", "ino", "mode", "nlink", "uid", "gid", "rdev",
-		"size", "atime", "mtime", "ctime", "blksize", "blocks"
+		"size", "atime", "mtime", "ctime", "blksize", "blocks",
+        "atimensec", "mtimensec", "ctimensec"
 	};
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "r", &fp) == FAILURE) {
@@ -1562,6 +1564,19 @@ PHP_NAMED_FUNCTION(php_if_fstat)
 #else
 	MAKE_LONG_ZVAL_INCREF(stat_blocks,-1);
 #endif
+#if defined(HAVE_ST_ATIM)
+	MAKE_LONG_ZVAL_INCREF(stat_atimensec, stat_ssb.sb.st_atim.tv_nsec);
+	MAKE_LONG_ZVAL_INCREF(stat_mtimensec, stat_ssb.sb.st_mtim.tv_nsec);
+	MAKE_LONG_ZVAL_INCREF(stat_ctimensec, stat_ssb.sb.st_ctim.tv_nsec);
+#elif defined(HAVE_ST_ATIMENSEC)
+	MAKE_LONG_ZVAL_INCREF(stat_atimensec, stat_ssb.sb.st_atimensec);
+	MAKE_LONG_ZVAL_INCREF(stat_mtimensec, stat_ssb.sb.st_mtimensec);
+	MAKE_LONG_ZVAL_INCREF(stat_ctimensec, stat_ssb.sb.st_ctimensec);
+#else
+	MAKE_LONG_ZVAL_INCREF(stat_atimensec, 0);
+	MAKE_LONG_ZVAL_INCREF(stat_mtimensec, 0);
+	MAKE_LONG_ZVAL_INCREF(stat_ctimensec, 0);
+#endif
 	/* Store numeric indexes in propper order */
 	zend_hash_next_index_insert(HASH_OF(return_value), (void *)&stat_dev, sizeof(zval *), NULL);
 	zend_hash_next_index_insert(HASH_OF(return_value), (void *)&stat_ino, sizeof(zval *), NULL);
@@ -1576,6 +1591,9 @@ PHP_NAMED_FUNCTION(php_if_fstat)
 	zend_hash_next_index_insert(HASH_OF(return_value), (void *)&stat_ctime, sizeof(zval *), NULL);
 	zend_hash_next_index_insert(HASH_OF(return_value), (void *)&stat_blksize, sizeof(zval *), NULL);
 	zend_hash_next_index_insert(HASH_OF(return_value), (void *)&stat_blocks, sizeof(zval *), NULL);
+	zend_hash_next_index_insert(HASH_OF(return_value), (void *)&stat_atimensec, sizeof(zval *), NULL);
+	zend_hash_next_index_insert(HASH_OF(return_value), (void *)&stat_mtimensec, sizeof(zval *), NULL);
+	zend_hash_next_index_insert(HASH_OF(return_value), (void *)&stat_ctimensec, sizeof(zval *), NULL);
 
 	/* Store string indexes referencing the same zval*/
 	zend_hash_update(HASH_OF(return_value), stat_sb_names[0], strlen(stat_sb_names[0])+1, (void *)&stat_dev, sizeof(zval *), NULL);
@@ -1591,6 +1609,9 @@ PHP_NAMED_FUNCTION(php_if_fstat)
 	zend_hash_update(HASH_OF(return_value), stat_sb_names[10], strlen(stat_sb_names[10])+1, (void *)&stat_ctime, sizeof(zval *), NULL);
 	zend_hash_update(HASH_OF(return_value), stat_sb_names[11], strlen(stat_sb_names[11])+1, (void *)&stat_blksize, sizeof(zval *), NULL);
 	zend_hash_update(HASH_OF(return_value), stat_sb_names[12], strlen(stat_sb_names[12])+1, (void *)&stat_blocks, sizeof(zval *), NULL);
+	zend_hash_update(HASH_OF(return_value), stat_sb_names[13], strlen(stat_sb_names[13])+1, (void *) &stat_atimensec, sizeof(zval *), NULL);
+	zend_hash_update(HASH_OF(return_value), stat_sb_names[14], strlen(stat_sb_names[14])+1, (void *) &stat_mtimensec, sizeof(zval *), NULL);
+	zend_hash_update(HASH_OF(return_value), stat_sb_names[15], strlen(stat_sb_names[15])+1, (void *) &stat_ctimensec, sizeof(zval *), NULL);
 }
 /* }}} */
 

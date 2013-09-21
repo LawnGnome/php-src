@@ -917,6 +917,18 @@ static int statbuf_from_array(zval *array, php_stream_statbuf *ssb TSRMLS_DC)
 #ifdef HAVE_ST_BLOCKS
 	STAT_PROP_ENTRY(blocks);
 #endif
+#if defined(HAVE_ST_ATIM)
+	STAT_PROP_ENTRY_EX(atime, atim.tv_sec);
+	STAT_PROP_ENTRY_EX(atimensec, atim.tv_nsec);
+	STAT_PROP_ENTRY_EX(mtime, mtim.tv_sec);
+	STAT_PROP_ENTRY_EX(mtimensec, mtim.tv_nsec);
+	STAT_PROP_ENTRY_EX(ctime, ctim.tv_sec);
+	STAT_PROP_ENTRY_EX(ctimensec, ctim.tv_nsec);
+#elif defined(HAVE_ST_ATIMENSEC)
+	STAT_PROP_ENTRY(atimensec);
+	STAT_PROP_ENTRY(mtimensec);
+	STAT_PROP_ENTRY(ctimensec);
+#endif
 
 #undef STAT_PROP_ENTRY
 #undef STAT_PROP_ENTRY_EX

@@ -1,5 +1,5 @@
 --TEST--
-Userstream unlink, rename, mkdir, rmdir, and url_stat.
+Userstream url_stat returning a subset of fields
 --FILE--
 <?php # vim:ft=php:
 class test {
@@ -26,9 +26,7 @@ class test {
         print "Stating file: $path\n";
         return array('dev'=>1, 'ino'=>2, 'mode'=>0644, 'nlink'=>3,
                      'uid'=>100, 'gid'=>1000, 'rdev'=>-1, 'size'=>31337,
-                     'atime'=>1234567890, 'mtime'=>1231231231, 'ctime'=>1234564564,
-                     'blksize'=>-1, 'blocks'=>-1, 'atimensec'=>100,
-                     'mtimensec'=>200, 'ctimensec'=>300);
+                     'atime'=>1234567890, 'mtime'=>1231231231, 'ctime'=>1234564564);
     }
 }
 
@@ -63,11 +61,11 @@ Array
     [8] => 1234567890
     [9] => 1231231231
     [10] => 1234564564
-    [11] => -1
-    [12] => -1
-    [13] => 100
-    [14] => 200
-    [15] => 300
+    [11] => 0
+    [12] => 0
+    [13] => 0
+    [14] => 0
+    [15] => 0
     [dev] => 1
     [ino] => 2
     [mode] => 420
@@ -79,11 +77,11 @@ Array
     [atime] => 1234567890
     [mtime] => 1231231231
     [ctime] => 1234564564
-    [blksize] => -1
-    [blocks] => -1
-    [atimensec] => 100
-    [mtimensec] => 200
-    [ctimensec] => 300
+    [blksize] => 0
+    [blocks] => 0
+    [atimensec] => 0
+    [mtimensec] => 0
+    [ctimensec] => 0
 )
 Filesize = 31337
 filemtime = 1231231231

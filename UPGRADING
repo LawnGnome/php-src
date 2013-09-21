@@ -59,6 +59,14 @@ PHP X.Y UPGRADE NOTES
   CURLOPT_SAFE_UPLOAD is now turned on by default and uploads with @file 
   do not work unless it is explicitly set to false.
 
+- Standard:
+  - stat(), fstat() and lstat() now include "atimensec", "ctimensec" and
+    "mtimensec" fields in their result arrays. These fields provide the number
+    of nanoseconds past the timestamp in the atime, ctime and mtime fields,
+    respectively. On systems that don't support nanosecond resolution, these
+    fields will be 0. Stream wrappers may also provide these fields in their
+    stream_stat() and url_stat() methods.
+
 ========================================
 5. New Functions
 ========================================

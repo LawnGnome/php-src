@@ -95,7 +95,7 @@ bool(true)
 bool(true)
 *** Testing stat() and lstat() : comparing stats (recorded before and after file/link creation) ***
 -- comparing difference in dir stats before and after creating file in it --
-array(26) {
+array(32) {
   [0]=>
   int(%i)
   [1]=>
@@ -122,6 +122,12 @@ array(26) {
   int(%i)
   [12]=>
   int(%i)
+  [13]=>
+  int(%i)
+  [14]=>
+  int(%i)
+  [15]=>
+  int(%i)
   ["dev"]=>
   int(%i)
   ["ino"]=>
@@ -147,9 +153,15 @@ array(26) {
   ["blksize"]=>
   int(%i)
   ["blocks"]=>
+  int(%i)
+  ["atimensec"]=>
+  int(%i)
+  ["mtimensec"]=>
+  int(%i)
+  ["ctimensec"]=>
   int(%i)
 }
-array(26) {
+array(32) {
   [0]=>
   int(%i)
   [1]=>
@@ -176,6 +188,12 @@ array(26) {
   int(%i)
   [12]=>
   int(%i)
+  [13]=>
+  int(%i)
+  [14]=>
+  int(%i)
+  [15]=>
+  int(%i)
   ["dev"]=>
   int(%i)
   ["ino"]=>
@@ -201,11 +219,17 @@ array(26) {
   ["blksize"]=>
   int(%i)
   ["blocks"]=>
+  int(%i)
+  ["atimensec"]=>
+  int(%i)
+  ["mtimensec"]=>
+  int(%i)
+  ["ctimensec"]=>
   int(%i)
 }
 bool(true)
 -- comparing difference in file stats before and after creating link to it --
-array(26) {
+array(32) {
   [0]=>
   int(%i)
   [1]=>
@@ -232,6 +256,12 @@ array(26) {
   int(%i)
   [12]=>
   int(%i)
+  [13]=>
+  int(%i)
+  [14]=>
+  int(%i)
+  [15]=>
+  int(%i)
   ["dev"]=>
   int(%i)
   ["ino"]=>
@@ -257,9 +287,15 @@ array(26) {
   ["blksize"]=>
   int(%i)
   ["blocks"]=>
+  int(%i)
+  ["atimensec"]=>
+  int(%i)
+  ["mtimensec"]=>
+  int(%i)
+  ["ctimensec"]=>
   int(%i)
 }
-array(26) {
+array(32) {
   [0]=>
   int(%i)
   [1]=>
@@ -286,6 +322,12 @@ array(26) {
   int(%i)
   [12]=>
   int(%i)
+  [13]=>
+  int(%i)
+  [14]=>
+  int(%i)
+  [15]=>
+  int(%i)
   ["dev"]=>
   int(%i)
   ["ino"]=>
@@ -311,6 +353,12 @@ array(26) {
   ["blksize"]=>
   int(%i)
   ["blocks"]=>
+  int(%i)
+  ["atimensec"]=>
+  int(%i)
+  ["mtimensec"]=>
+  int(%i)
+  ["ctimensec"]=>
   int(%i)
 }
 bool(true)

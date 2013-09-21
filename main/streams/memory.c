@@ -221,6 +221,29 @@ static int php_stream_memory_stat(php_stream *stream, php_stream_statbuf *ssb TS
 	ssb->sb.st_ctime = timestamp;
 #endif
 
+#if HAVE_GETTIMEOFDAY
+	{
+		struct timeval tv;
+
+		if (gettimeofday(&tv, NULL) == 0) {
+			long nsec = tv.tv_usec * 1000;
+
+#	if defined(HAVE_ST_ATIM)
+			ssb->sb.st_atim.tv_sec = tv.tv_sec;
+			ssb->sb.st_atim.tv_nsec = nsec;
+			ssb->sb.st_mtim.tv_sec = tv.tv_sec;
+			ssb->sb.st_mtim.tv_nsec = nsec;
+			ssb->sb.st_ctim.tv_sec = tv.tv_sec;
+			ssb->sb.st_ctim.tv_nsec = nsec;
+#	elif defined(HAVE_ST_ATIMENSEC)
+			ssb->sb.st_atimensec = nsec;
+			ssb->sb.st_mtimensec = nsec;
+			ssb->sb.st_ctimensec = nsec;
+#	endif
+		}
+	}
+#endif /* HAVE_GETTIMEOFDAY */
+
 	ssb->sb.st_nlink = 1;
 	ssb->sb.st_rdev = -1;
 	/* this is only for APC, so use /dev/null device - no chance of conflict there! */

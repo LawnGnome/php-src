@@ -591,6 +591,49 @@ dnl
 AC_CHECK_HEADERS([atomic.h])
 
 dnl
+dnl Check for nanosecond stat() resolution
+dnl
+AC_CACHE_CHECK([whether struct stat includes a st_atimensec member], ac_cv_stat_ns_glibc, [
+AC_TRY_COMPILE([
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+],[
+struct stat *st;
+st->st_atimensec;
+st->st_mtimensec;
+st->st_ctimensec;
+],[
+  ac_cv_stat_ns_glibc=yes
+],[
+  ac_cv_stat_ns_glibc=no
+])])
+
+if test "$ac_cv_stat_ns_glibc" = "yes"; then
+  AC_DEFINE([HAVE_ST_ATIMENSEC], 1, [whether struct stat includes a st_atimensec member])
+fi
+
+AC_CACHE_CHECK([whether struct stat includes a st_atim member], ac_cv_stat_ns_posix, [
+AC_TRY_COMPILE([
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+],[
+struct stat *st;
+st->st_atim.tv_nsec;
+st->st_mtim.tv_nsec;
+st->st_ctim.tv_nsec;
+],[
+  ac_cv_stat_ns_posix=yes
+],[
+  ac_cv_stat_ns_posix=no
+])])
+
+if test "$ac_cv_stat_ns_posix" = "yes"; then
+  AC_DEFINE([HAVE_ST_ATIM], 1, [whether struct stat includes a st_atim member])
+fi
+
+dnl
 dnl Setup extension sources
 dnl
 PHP_NEW_EXTENSION(standard, array.c base64.c basic_functions.c browscap.c crc32.c crypt.c \
