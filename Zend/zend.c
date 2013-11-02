@@ -30,6 +30,7 @@
 #include "zend_ini.h"
 #include "zend_vm.h"
 #include "zend_dtrace.h"
+#include "zend_assert.h"
 
 #ifdef ZTS
 # define GLOBAL_FUNCTION_TABLE		global_function_table
@@ -747,6 +748,7 @@ int zend_startup(zend_utility_functions *utility_functions, char **extensions TS
 
 	zend_interned_strings_init(TSRMLS_C);
 	zend_startup_builtin_functions(TSRMLS_C);
+	zend_startup_assert(TSRMLS_C);
 	zend_register_standard_constants(TSRMLS_C);
 	zend_register_auto_global("GLOBALS", sizeof("GLOBALS") - 1, 1, php_auto_globals_create_globals TSRMLS_CC);
 

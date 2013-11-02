@@ -5473,20 +5473,26 @@ ZEND_VM_HANDLER(165, ZEND_EXPECT, ANY, ANY)
 	{
 		zval *expression =  GET_OP1_ZVAL_PTR(BP_VAR_R);
 		zval *message  =  GET_OP2_ZVAL_PTR(BP_VAR_R);
-        
-		if (!zend_is_true(expression)) {
+
+		if (ASSERTG(active) && !zend_is_true(expression)) {
 		    zend_class_entry *ce = zend_get_expectation_exception(TSRMLS_C);
 		    
 		    if (Z_TYPE_P(message) == IS_OBJECT &&
 		        instanceof_function(Z_OBJCE_P(message), ce TSRMLS_CC)) {
+		        /* Maintain new behaviour: ignore assert_options for now and
+		         * just throw. */
 		        zend_throw_exception_object(message TSRMLS_CC);
+                HANDLE_EXCEPTION();
 		    } else {
+                zend_bool threw = 0;
+
 		        convert_to_string_ex(&message);
-		        
-		        zend_throw_exception(
-		            ce, Z_STRVAL_P(message), E_ERROR TSRMLS_CC);
+		        zend_assert_handle_failure(Z_STRVAL_P(message), Z_STRLEN_P(message), NULL, &threw TSRMLS_CC);
+
+                if (threw) {
+                    HANDLE_EXCEPTION();
+                }
 		    }
-			HANDLE_EXCEPTION();
 	    }
 	}
 

@@ -1050,30 +1050,19 @@ void zend_do_expect_end(const znode *token, const znode *expression, const znode
 {
     zend_op *opline = NULL;
 
-    if (CG(expectations)) {
-        opline = get_next_op(CG(active_op_array) TSRMLS_CC);
-        opline->opcode = ZEND_EXPECT;
-        SET_NODE(opline->op1, expression);
-        if (reason->op_type == IS_UNUSED) {
-            zval message;
-            
-            zend_copy_statement(
-                &message, start_statement, --end_statement TSRMLS_CC);
-            opline->op2_type = IS_CONST;
-            opline->op2.constant = zend_add_literal(CG(active_op_array), &message TSRMLS_CC);
-            Z_HASH_P(&CONSTANT(opline->op2.constant)) = zend_hash_func(Z_STRVAL(CONSTANT(opline->op2.constant)), Z_STRLEN(CONSTANT(opline->op2.constant)));
-        } else {
-            SET_NODE(opline->op2, reason);
-        }
+    opline = get_next_op(CG(active_op_array) TSRMLS_CC);
+    opline->opcode = ZEND_EXPECT;
+    SET_NODE(opline->op1, expression);
+    if (reason->op_type == IS_UNUSED) {
+        zval message;
+        
+        zend_copy_statement(
+            &message, start_statement, --end_statement TSRMLS_CC);
+        opline->op2_type = IS_CONST;
+        opline->op2.constant = zend_add_literal(CG(active_op_array), &message TSRMLS_CC);
+        Z_HASH_P(&CONSTANT(opline->op2.constant)) = zend_hash_func(Z_STRVAL(CONSTANT(opline->op2.constant)), Z_STRLEN(CONSTANT(opline->op2.constant)));
     } else {
-    
-        zend_do_free((znode*)expression TSRMLS_CC);
-        zend_do_free((znode*)reason TSRMLS_CC);
-
-        opline = &CG(active_op_array)->opcodes[token->u.op.opline_num];
-        opline->opcode = ZEND_JMP;
-        opline->op1.opline_num = get_next_op_number(CG(active_op_array));
-        SET_UNUSED(opline->op2);
+        SET_NODE(opline->op2, reason);
     }
 }
 

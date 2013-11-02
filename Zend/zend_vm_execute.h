@@ -1219,19 +1219,25 @@ static int ZEND_FASTCALL  ZEND_EXPECT_SPEC_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 		zval *expression =  get_zval_ptr(opline->op1_type, &opline->op1, execute_data, &free_op1, BP_VAR_R);
 		zval *message  =  get_zval_ptr(opline->op2_type, &opline->op2, execute_data, &free_op2, BP_VAR_R);
 
-		if (!zend_is_true(expression)) {
+		if (ASSERTG(active) && !zend_is_true(expression)) {
 		    zend_class_entry *ce = zend_get_expectation_exception(TSRMLS_C);
 
 		    if (Z_TYPE_P(message) == IS_OBJECT &&
 		        instanceof_function(Z_OBJCE_P(message), ce TSRMLS_CC)) {
+		        /* Maintain new behaviour: ignore assert_options for now and
+		         * just throw. */
 		        zend_throw_exception_object(message TSRMLS_CC);
+                HANDLE_EXCEPTION();
 		    } else {
-		        convert_to_string_ex(&message);
+                zend_bool threw = 0;
 
-		        zend_throw_exception(
-		            ce, Z_STRVAL_P(message), E_ERROR TSRMLS_CC);
+		        convert_to_string_ex(&message);
+		        zend_assert_handle_failure(Z_STRVAL_P(message), Z_STRLEN_P(message), NULL, &threw TSRMLS_CC);
+
+                if (threw) {
+                    HANDLE_EXCEPTION();
+                }
 		    }
-			HANDLE_EXCEPTION();
 	    }
 	}
 
