@@ -5748,12 +5748,13 @@ static void php_simple_ini_parser_cb(zval *arg1, zval *arg2, zval *arg3, int cal
 	switch (callback_type) {
 
 		case ZEND_INI_PARSER_ENTRY:
-			if (!arg2) {
-				/* bare string - nothing to do */
-				break;
+			if (arg2) {
+				ALLOC_ZVAL(element);
+				MAKE_COPY_ZVAL(&arg2, element);
+			} else {
+				/* Set the value to NULL for ini entries without values. */
+				ALLOC_INIT_ZVAL(element);
 			}
-			ALLOC_ZVAL(element);
-			MAKE_COPY_ZVAL(&arg2, element);
 			zend_symtable_update(Z_ARRVAL_P(arr), Z_STRVAL_P(arg1), Z_STRLEN_P(arg1) + 1, &element, sizeof(zval *), NULL);
 			break;
 
@@ -5820,7 +5821,7 @@ static void php_ini_parser_cb_with_sections(zval *arg1, zval *arg2, zval *arg3, 
 		MAKE_STD_ZVAL(BG(active_ini_file_section));
 		array_init(BG(active_ini_file_section));
 		zend_symtable_update(Z_ARRVAL_P(arr), Z_STRVAL_P(arg1), Z_STRLEN_P(arg1) + 1, &BG(active_ini_file_section), sizeof(zval *), NULL);
-	} else if (arg2) {
+	} else {
 		zval *active_arr;
 
 		if (BG(active_ini_file_section)) {
