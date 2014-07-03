@@ -741,11 +741,21 @@ SAPI_API int sapi_header_op(sapi_header_op_enum op, void *arg TSRMLS_DC)
 		return SUCCESS;
 	} else {
 		/* new line/NUL character safety check */
-		if (strpbrk(header_line, "\r\n")) {
-			efree(header_line);
-			sapi_module.sapi_error(E_WARNING, "Header may not contain multiple lines");
+		int i;
+		for (i = 0; i < header_line_len; i++) {
+			if (header_line[i] == '\r' || header_line[i] == '\n') {
+				efree(header_line);
+				sapi_module.sapi_error(E_WARNING, "Header may not contain multiple lines");
 
-			return FAILURE;
+				return FAILURE;
+			}
+
+			if (header_line[i] == '\0') {
+				efree(header_line);
+				sapi_module.sapi_error(E_WARNING, "Header may not contain NUL bytes");
+
+				return FAILURE;
+			}
 		}
 	}
 
