@@ -2515,21 +2515,32 @@ ZEND_VM_HANDLER(59, ZEND_INIT_FCALL_BY_NAME, ANY, CONST|TMPVAR|CV)
 
 ZEND_VM_C_LABEL(try_function_name):
 		if (OP2_TYPE != IS_CONST && EXPECTED(Z_TYPE_P(function_name) == IS_STRING)) {
+			zend_fcall_info_cache fcc;
+
+			fcc.initialized = 0;
+			fcc.calling_scope = NULL;
+			fcc.called_scope = NULL;
+			fcc.function_handler = NULL;
+			fcc.calling_scope = NULL;
+			fcc.object = NULL;
+
 			if (Z_STRVAL_P(function_name)[0] == '\\') {
 				lcname = zend_string_alloc(Z_STRLEN_P(function_name) - 1, 0);
 				zend_str_tolower_copy(lcname->val, Z_STRVAL_P(function_name) + 1, Z_STRLEN_P(function_name) - 1);
 			} else {
 				lcname = zend_string_tolower(Z_STR_P(function_name));
 			}
-			if (UNEXPECTED((func = zend_hash_find(EG(function_table), lcname)) == NULL)) {
+
+			if (EXPECTED(1 == zend_is_callable_ex(function_name, NULL, 0, NULL, &fcc, NULL))) {
+				fbc = fcc.function_handler;
+				called_scope = fcc.called_scope;
+				object = fcc.object;
+			} else {
 				zend_error_noreturn(E_ERROR, "Call to undefined function %s()", Z_STRVAL_P(function_name));
 			}
+
 			zend_string_release(lcname);
 			FREE_OP2();
-
-			fbc = Z_FUNC_P(func);
-			called_scope = NULL;
-			object = NULL;
 		} else if (OP2_TYPE != IS_CONST &&
 		    EXPECTED(Z_TYPE_P(function_name) == IS_OBJECT) &&
 			Z_OBJ_HANDLER_P(function_name, get_closure) &&
