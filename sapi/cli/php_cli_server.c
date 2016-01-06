@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <dirent.h>
 
 #ifdef PHP_WIN32
 # include <process.h>
@@ -220,12 +221,16 @@ ZEND_DECLARE_MODULE_GLOBALS(cli_server);
 
 /* {{{ static char php_cli_server_css[]
  * copied from ext/standard/info.c
+ * list styling added for directory indices
  */
 static const char php_cli_server_css[] = "<style>\n" \
 										"body { background-color: #fcfcfc; color: #333333; margin: 0; padding:0; }\n" \
 										"h1 { font-size: 1.5em; font-weight: normal; background-color: #9999cc; min-height:2em; line-height:2em; border-bottom: 1px inset black; margin: 0; }\n" \
 										"h1, p { padding-left: 10px; }\n" \
 										"code.url { background-color: #eeeeee; font-family:monospace; padding:0 2px;}\n" \
+										"ul, li { list-style: none; margin: 0; padding: 0; }\n" \
+										"ul { padding-left: 10px; }\n" \
+										"li { padding-top: 0.4em; }\n" \
 										"</style>\n";
 /* }}} */
 
@@ -1401,11 +1406,8 @@ static void php_cli_server_request_translate_vpath(php_cli_server_request *reque
 					file++;
 				}
 				if (!*file || is_static_file) {
-					if (prev_path) {
-						pefree(prev_path, 1);
-					}
-					pefree(buf, 1);
-					return;
+					/* put things back how they were */
+					*q = '\0';
 				}
 			}
 			break; /* regular file */
@@ -1828,6 +1830,33 @@ static void php_cli_server_close_connection(php_cli_server *server, php_cli_serv
 	zend_hash_index_del(&server->clients, client->sock);
 } /* }}} */
 
+static int set_internal_response_headers(php_cli_server_client *client, int status) /* {{{ */
+{
+	php_cli_server_chunk *chunk;
+	smart_str buffer = { 0 };
+
+	append_http_status_line(&buffer, client->request.protocol_version, status, 1);
+	if (!buffer.s) {
+		/* out of memory */
+		return FAILURE;
+	}
+	append_essential_headers(&buffer, client, 1);
+	smart_str_appends_ex(&buffer, "Content-Type: text/html; charset=UTF-8\r\n", 1);
+	smart_str_appends_ex(&buffer, "Content-Length: ", 1);
+	smart_str_append_unsigned_ex(&buffer, php_cli_server_buffer_size(&client->content_sender.buffer), 1);
+	smart_str_appendl_ex(&buffer, "\r\n", 2, 1);
+	smart_str_appendl_ex(&buffer, "\r\n", 2, 1);
+
+	chunk = php_cli_server_chunk_heap_new(buffer.s, ZSTR_VAL(buffer.s), ZSTR_LEN(buffer.s));
+	if (!chunk) {
+		smart_str_free(&buffer);
+		return FAILURE;
+	}
+	php_cli_server_buffer_prepend(&client->content_sender.buffer, chunk);
+
+	return SUCCESS;
+} /* }}} */
+
 static int php_cli_server_send_error_page(php_cli_server *server, php_cli_server_client *client, int status) /* {{{ */
 {
 	zend_string *escaped_request_uri = NULL;
@@ -1884,28 +1913,7 @@ static int php_cli_server_send_error_page(php_cli_server *server, php_cli_server
 		php_cli_server_buffer_append(&client->content_sender.buffer, chunk);
 	}
 
-	{
-		php_cli_server_chunk *chunk;
-		smart_str buffer = { 0 };
-		append_http_status_line(&buffer, client->request.protocol_version, status, 1);
-		if (!buffer.s) {
-			/* out of memory */
-			goto fail;
-		}
-		append_essential_headers(&buffer, client, 1);
-		smart_str_appends_ex(&buffer, "Content-Type: text/html; charset=UTF-8\r\n", 1);
-		smart_str_appends_ex(&buffer, "Content-Length: ", 1);
-		smart_str_append_unsigned_ex(&buffer, php_cli_server_buffer_size(&client->content_sender.buffer), 1);
-		smart_str_appendl_ex(&buffer, "\r\n", 2, 1);
-		smart_str_appendl_ex(&buffer, "\r\n", 2, 1);
-
-		chunk = php_cli_server_chunk_heap_new(buffer.s, ZSTR_VAL(buffer.s), ZSTR_LEN(buffer.s));
-		if (!chunk) {
-			smart_str_free(&buffer);
-			goto fail;
-		}
-		php_cli_server_buffer_prepend(&client->content_sender.buffer, chunk);
-	}
+	set_internal_response_headers(client, status);
 
 	php_cli_server_log_response(client, status, errstr ? errstr : "?");
 	php_cli_server_poller_add(&server->poller, POLLOUT, client->sock);
@@ -1922,6 +1930,163 @@ fail:
 	zend_string_free(escaped_request_uri);
 	return FAILURE;
 } /* }}} */
+
+typedef struct php_cli_server_directory_entry {
+	char *name;
+	int is_dir;
+} php_cli_server_directory_entry;
+
+static php_cli_server_directory_entry *php_cli_server_directory_entry_new(const char *name, int is_dir) /* {{{ */
+{
+	php_cli_server_directory_entry *entry = pemalloc(sizeof(php_cli_server_directory_entry), 1);
+
+	entry->name = pestrdup(name, 1);
+	entry->is_dir = is_dir;
+
+	return entry;
+} /* }}} */
+
+static void php_cli_server_directory_entry_dtor(php_cli_server_directory_entry *entry) /* {{{ */
+{
+	pefree(entry->name, 1);
+	pefree(entry, 1);
+} /* }}} */
+
+static void dir_name_dtor(php_cli_server_directory_entry **entry_ptr) /* {{{ */
+{
+	php_cli_server_directory_entry_dtor(*entry_ptr);
+} /* }}} */
+
+static int dir_name_compare(const zend_llist_element **a, const zend_llist_element **b) /* {{{ */
+{
+	php_cli_server_directory_entry *a_ent, *b_ent;
+
+	a_ent = *((php_cli_server_directory_entry **) (*a)->data);
+	b_ent = *((php_cli_server_directory_entry **) (*b)->data);
+
+	/* put directories first */
+	if (a_ent->is_dir && !b_ent->is_dir) {
+		return -1;
+	} else if (!a_ent->is_dir && b_ent->is_dir) {
+		return 1;
+	}
+
+	return strcmp(a_ent->name, b_ent->name);
+} /* }}} */
+
+static php_cli_server_chunk *print_to_chunk(char *format, ...) /* {{{ */
+{
+	va_list ap;
+	char *buf = NULL;
+	php_cli_server_chunk *chunk;
+	size_t len;
+
+	va_start(ap, format);
+	len = (size_t) vasprintf(&buf, format, ap);
+	va_end(ap);
+
+	chunk = php_cli_server_chunk_heap_new_self_contained(len);
+	if (!chunk) {
+		return NULL;
+	}
+	memcpy(chunk->data.heap.p, buf, len);
+	free(buf);
+
+	return chunk;
+} /* }}} */
+
+static void add_dir_entry(php_cli_server_directory_entry **ent_ptr, php_cli_server_client *client) /* {{{ */
+{
+	php_cli_server_chunk *chunk;
+	php_cli_server_directory_entry *ent = *ent_ptr;
+	zend_string *escaped_name;
+	char slash[2] = { 0 };
+
+	slash[0] = ent->is_dir ? '/' : '\0';
+
+	escaped_name = php_escape_html_entities_ex((unsigned char *) ent->name, strlen(ent->name), 0, ENT_QUOTES, NULL, 0);
+	chunk = print_to_chunk("<li><a href='%s%s'>%s%s</a></li>\n", ZSTR_VAL(escaped_name), slash, ZSTR_VAL(escaped_name), slash);
+	zend_string_free(escaped_name);
+
+	if (chunk) {
+		php_cli_server_buffer_append(&client->content_sender.buffer, chunk);
+	}
+} /* }}} */
+
+static int php_cli_server_send_directory_index(php_cli_server *server, php_cli_server_client *client) /* {{{ */
+{
+	php_cli_server_chunk *chunk;
+	DIR *dir = opendir(client->request.path_translated);
+	char dentry[sizeof(struct dirent) + MAXPATHLEN];
+	struct dirent *entry = (struct dirent *) &dentry;
+	zend_string *escaped_request_uri = NULL;
+	zend_llist names;
+	int retval = FAILURE;
+
+	if (!dir) {
+		return php_cli_server_send_error_page(server, client, 400);
+	}
+
+	/* get and sort the list of file/dir names in the directory */
+	zend_llist_init(&names, sizeof(php_cli_server_directory_entry *), (llist_dtor_func_t) dir_name_dtor, 1);
+	while (!php_readdir_r(dir, (struct dirent *) dentry, &entry) && entry) {
+		php_cli_server_directory_entry *de;
+		int is_dir;
+		char *path = NULL;
+		zend_stat_t sb;
+
+		asprintf(&path, "%s/%s", client->request.path_translated, entry->d_name);
+		if (!zend_stat(path, &sb)) {
+			is_dir = sb.st_mode & S_IFDIR;
+			free(path);
+		} else {
+			free(path);
+			continue;
+		}
+		
+		de = php_cli_server_directory_entry_new(entry->d_name, is_dir);
+		zend_llist_add_element(&names, &de);
+	}
+	zend_llist_sort(&names, dir_name_compare);
+
+	/* prepare to send the response */
+	php_cli_server_content_sender_ctor(&client->content_sender);
+	client->content_sender_initialized = 1;
+
+	/* send a prologue with the title */
+	escaped_request_uri = php_escape_html_entities_ex((unsigned char *)client->request.request_uri, client->request.request_uri_len, 0, ENT_QUOTES, NULL, 0);
+	chunk = print_to_chunk("<!doctype html><html><head><title>Index of %s</title>%s</head><body><h1>Index of %s</h1><ul>\n", ZSTR_VAL(escaped_request_uri), php_cli_server_css, ZSTR_VAL(escaped_request_uri));
+	zend_string_free(escaped_request_uri);
+	if (!chunk) {
+		goto done;
+	}
+	php_cli_server_buffer_append(&client->content_sender.buffer, chunk);
+
+	/* send the elements */
+	zend_llist_apply_with_argument(&names, (llist_apply_with_arg_func_t) add_dir_entry, client);
+
+	/* send the epilogue */
+	chunk = print_to_chunk("</ul></body></html>");
+	if (!chunk) {
+		goto done;
+	}
+	php_cli_server_buffer_append(&client->content_sender.buffer, chunk);
+
+	/* set headers */
+	set_internal_response_headers(client, 200);
+
+	/* we're done */
+	php_cli_server_log_response(client, 200, NULL);
+	php_cli_server_poller_add(&server->poller, POLLOUT, client->sock);
+	retval = SUCCESS;
+
+done:
+	zend_llist_destroy(&names);
+	closedir(dir);
+
+	return retval;
+}
+/* }}} */
 
 static int php_cli_server_dispatch_script(php_cli_server *server, php_cli_server_client *client) /* {{{ */
 {
@@ -1953,6 +2118,10 @@ static int php_cli_server_begin_send_static(php_cli_server *server, php_cli_serv
 	if (client->request.path_translated && strlen(client->request.path_translated) != client->request.path_translated_len) {
 		/* can't handle paths that contain nul bytes */
 		return php_cli_server_send_error_page(server, client, 400);
+	}
+
+	if (client->request.sb.st_mode & S_IFDIR) {
+		return php_cli_server_send_directory_index(server, client);
 	}
 
 	fd = client->request.path_translated ? open(client->request.path_translated, O_RDONLY): -1;
