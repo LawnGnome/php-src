@@ -114,6 +114,7 @@ void php_dl(zval *file, int type, zval *return_value, int start_now TSRMLS_DC)
 	zend_module_entry *(*get_module)(void);
 	int error_type;
 	char *extension_dir;
+	const char *filename = Z_STRVAL_P(file);
 
 	if (type == MODULE_PERSISTENT) {
 		extension_dir = INI_STR("extension_dir");
@@ -127,23 +128,24 @@ void php_dl(zval *file, int type, zval *return_value, int start_now TSRMLS_DC)
 		error_type = E_CORE_WARNING;
 	}
 
-	if (extension_dir && extension_dir[0]){
+	/* Check if passed filename contains directory separators */
+	if (strchr(filename, '/') != NULL || strchr(filename, DEFAULT_SLASH) != NULL) {
+		/* Passing modules with full path is not supported for dynamically loaded extensions */
+		if (type == MODULE_TEMPORARY) {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Temporary module name should contain only filename");
+			RETURN_FALSE;
+		}
+		libpath = estrdup(filename);
+	} else if (extension_dir && extension_dir[0]) {
 		int extension_dir_len = strlen(extension_dir);
 
-		if (type == MODULE_TEMPORARY) {
-			if (strchr(Z_STRVAL_P(file), '/') != NULL || strchr(Z_STRVAL_P(file), DEFAULT_SLASH) != NULL) {
-				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Temporary module name should contain only filename");
-				RETURN_FALSE;
-			}
-		}
-
 		if (IS_SLASH(extension_dir[extension_dir_len-1])) {
-			spprintf(&libpath, 0, "%s%s", extension_dir, Z_STRVAL_P(file));
+			spprintf(&libpath, 0, "%s%s", extension_dir, filename); /* SAFE */
 		} else {
-			spprintf(&libpath, 0, "%s%c%s", extension_dir, DEFAULT_SLASH, Z_STRVAL_P(file));
+			spprintf(&libpath, 0, "%s%c%s", extension_dir, DEFAULT_SLASH, filename); /* SAFE */
 		}
 	} else {
-		libpath = estrndup(Z_STRVAL_P(file), Z_STRLEN_P(file));
+		RETURN_FALSE;
 	}
 
 	/* load dynamic symbol */
